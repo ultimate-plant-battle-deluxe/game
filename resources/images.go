@@ -11,12 +11,17 @@ var Images struct {
 	Stages struct {
 		Basic *ebiten.Image
 	}
-	Flowers struct {
-		Basic *ebiten.Image
+	Plants struct {
+		Flowers struct {
+			Basic *ebiten.Image
+		}
 	}
 	Items struct {
 		Water *ebiten.Image
 		Leaf *ebiten.Image
+		Seeds struct {
+			Basic *ebiten.Image
+		}
 	}
 	Scenery struct {
 		Clouds  []*ebiten.Image
@@ -37,7 +42,7 @@ func Init() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	Images.Flowers.Basic, _, err = ebitenutil.NewImageFromFile("static/images/flowers/basic/basic.png")
+	Images.Plants.Flowers.Basic, _, err = ebitenutil.NewImageFromFile("static/images/flowers/basic/basic.png")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -46,6 +51,10 @@ func Init() {
 		log.Fatal(err)
 	}
 	Images.Items.Leaf, _, err = ebitenutil.NewImageFromFile("static/images/items/leaf.png")
+	if err != nil {
+		log.Fatal(err)
+	}
+	Images.Items.Seeds.Basic, _, err = ebitenutil.NewImageFromFile("static/images/items/seeds/basic.png")
 	if err != nil {
 		log.Fatal(err)
 	}

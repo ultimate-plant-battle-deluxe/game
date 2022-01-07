@@ -1,9 +1,11 @@
-module github.com/warent/plant-friends
+module github.com/ultimate-plant-battle-deluxe/game
 
 go 1.17
 
 require (
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/hajimehoshi/ebiten/v2 v2.2.3
+	github.com/satori/go.uuid v1.2.0
 	github.com/tanema/gween v0.0.0-20200427131925-c89ae23cc63c
 	golang.org/x/image v0.0.0-20211028202545-6944b10bf410
 )

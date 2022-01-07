@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/warent/plant-friends/resources"
+	"github.com/ultimate-plant-battle-deluxe/game/resources"
 )
 
 type Cloud struct {
