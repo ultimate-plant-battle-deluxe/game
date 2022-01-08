@@ -24,13 +24,13 @@ func (c *Clock) Draw(screen *ebiten.Image) {
 	handGeom := ebiten.GeoM{}
 	handGeom.Translate(-float64(resources.Images.Clock.Hand.Bounds().Max.X)/2, -float64(resources.Images.Clock.Hand.Bounds().Max.Y)/2)
 	handGeom.Rotate(float64(gameState.Time) * 30 * 2 * (math.Pi / 360))
-	gameState.Time += 1
 	handGeom.Translate(float64(resources.Images.Clock.Hand.Bounds().Max.X)/2, float64(resources.Images.Clock.Hand.Bounds().Max.Y)/2)
-	img := resources.Images.Clock.Face
-	img.DrawImage(resources.Images.Clock.Hand, &ebiten.DrawImageOptions{GeoM: handGeom})
+	clock.Image = ebiten.NewImage(resources.Images.Clock.Face.Bounds().Max.X, resources.Images.Clock.Face.Bounds().Max.Y)
+	clock.Image.DrawImage(resources.Images.Clock.Face, nil)
+	clock.Image.DrawImage(resources.Images.Clock.Hand, &ebiten.DrawImageOptions{GeoM: handGeom})
 	geom := ebiten.GeoM{}
 	geom.Translate(1560, 150)
-	screen.DrawImage(img, &ebiten.DrawImageOptions{GeoM: geom})
+	screen.DrawImage(clock.Image, &ebiten.DrawImageOptions{GeoM: geom})
 	hoursString := "Hours"
 	if gameState.Time == 1 {
 		hoursString = "Hour"

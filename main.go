@@ -36,11 +36,14 @@ type Garden struct {
 var Items []*Item
 var Gardens []*Garden
 
-func Api(req string) {
-	resp, err := http.Get("http://localhost:8080/v1/" + req)
+func Api(path string) {
+	req, err := http.NewRequest("GET", "http://localhost:8080/v1/" + path, nil)
 	if err != nil {
 		log.Fatalln(err)
 	}
+	req.Header.Add("x-token", gameToken)
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	token, err := jwt.Parse(resp.Header.Get("X-Token"), func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
@@ -50,7 +53,9 @@ func Api(req string) {
 	gameToken = token.Raw
 	claims := token.Claims.(jwt.MapClaims);
 	sDec, _ := b64.StdEncoding.DecodeString(claims["state"].(string))
+	gameState = &GameState{}
 	json.Unmarshal([]byte(sDec), gameState)
+	Items = []*Item{}
 	ApplyGameState()
 }
 
@@ -166,7 +171,11 @@ func (g *Game) Update() error {
 				dragOffsetY = float64(cursorY) - item.Y
 				break
 			}
-		} 
+		}
+
+		if clock.In(cursorX, cursorY) {
+			Api("roll")
+		}
 	}
 	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
 		for _, item := range Items {
