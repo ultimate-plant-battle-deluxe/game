@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	_ "image/png"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
@@ -18,8 +17,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	uuid "github.com/satori/go.uuid"
 	"github.com/ultimate-plant-battle-deluxe/game/resources"
-	"golang.org/x/image/font"
-	"golang.org/x/image/font/opentype"
 )
 
 type Sprite struct {
@@ -38,6 +35,24 @@ type Garden struct {
 
 var Items []*Item
 var Gardens []*Garden
+
+func Api(req string) {
+	resp, err := http.Get("http://localhost:8080/v1/" + req)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	token, err := jwt.Parse(resp.Header.Get("X-Token"), func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte("yolo"), nil
+	})
+	gameToken = token.Raw
+	claims := token.Claims.(jwt.MapClaims);
+	sDec, _ := b64.StdEncoding.DecodeString(claims["state"].(string))
+	json.Unmarshal([]byte(sDec), gameState)
+	ApplyGameState()
+}
 
 func AddItem(kind ItemKind) {
 	var img *ebiten.Image
@@ -83,9 +98,6 @@ func (s *Sprite) In(x, y int) bool {
 	return x >= int(s.X) && x <= int(s.X) + width && y >= int(s.Y) && y <= int(s.Y) + height
 }
 
-var fontInner font.Face
-var fontOutline font.Face
-
 type GameState struct {
 	Id uuid.UUID `json:"id"`
 	Time int `json:"time"`
@@ -93,44 +105,9 @@ type GameState struct {
 }
 
 var gameState *GameState = &GameState{}
+var gameToken string
 
-func init() {
-	ebiten.SetMaxTPS(60)
-	rand.Seed(time.Now().UnixNano())
-	resources.Init()
-	LoadClouds()
-
-	Items = []*Item{}
-	Gardens = []*Garden{{}}
-
-	fontFile, _ := ioutil.ReadFile("static/fonts/roboto.ttf")
-	ff, _ := opentype.Parse(fontFile)
-	fontInner, _ = opentype.NewFace(ff, &opentype.FaceOptions{
-		Size:    64,
-		DPI:     72,
-		Hinting: font.HintingFull,
-	})
-	fontOutline, _ = opentype.NewFace(ff, &opentype.FaceOptions{
-		Size:    74,
-		DPI:     72,
-		Hinting: font.HintingFull,
-	})
-
-	resp, err := http.Get("http://localhost:8080/v1/start")
-	if err != nil {
-		log.Fatalln(err)
-	}
-	token, err := jwt.Parse(resp.Header.Get("X-Token"), func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte("yolo"), nil
-	})
-
-	claims := token.Claims.(jwt.MapClaims);
-	sDec, _ := b64.StdEncoding.DecodeString(claims["state"].(string))
-	json.Unmarshal([]byte(sDec), gameState)
-
+func ApplyGameState() {
 	for _, item := range gameState.Items {
 		if item == ItemWater {
 			AddItem(ItemWater)
@@ -142,6 +119,18 @@ func init() {
 			AddItem(ItemSeedsBasic)
 		}
 	}
+}
+
+func init() {
+	ebiten.SetMaxTPS(60)
+	rand.Seed(time.Now().UnixNano())
+	resources.Init()
+	LoadClouds()
+
+	Items = []*Item{}
+	Gardens = []*Garden{{}}
+
+	Api("start")
 }
 
 type Game struct{}
@@ -233,6 +222,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if draggingItem != nil {
 		draggingItem.Draw(screen)
 	}
+
+	clock.Draw(screen)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
