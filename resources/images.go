@@ -13,7 +13,11 @@ import (
 
 var Images struct {
 	Stages struct {
-		Basic *ebiten.Image
+		Basic struct {
+			Day *ebiten.Image
+			Night *ebiten.Image
+			Highlight *ebiten.Image
+		}
 	}
 	Plants struct {
 		Flowers struct {
@@ -23,6 +27,7 @@ var Images struct {
 	Items struct {
 		Water *ebiten.Image
 		Leaf *ebiten.Image
+		Trowel *ebiten.Image
 		Seeds struct {
 			Basic *ebiten.Image
 		}
@@ -45,6 +50,10 @@ var Images struct {
 
 //go:embed static/images/stages/basic.png
 var embedStageBasic []byte
+//go:embed static/images/stages/basic-night.png
+var embedStageBasicNight []byte
+//go:embed static/images/stages/basic-highlight.png
+var embedStageBasicHighlight []byte
 
 //go:embed static/images/flowers/basic/basic.png
 var embedflowersBasicBasic []byte
@@ -53,6 +62,8 @@ var embedflowersBasicBasic []byte
 var embedItemsWater []byte
 //go:embed static/images/items/leaf.png
 var embedItemsLeaf []byte
+//go:embed static/images/items/trowel.png
+var embedItemsTrowel []byte
 //go:embed static/images/items/seeds/basic.png
 var embedItemsSeedsBasic []byte
 //go:embed static/images/stages/scenery/cloud1.png
@@ -94,7 +105,15 @@ var embedFontBecakOutline []byte
 func Init() {
 	var err error
 
-	Images.Stages.Basic, _, err = ebitenutil.NewImageFromReader(bytes.NewReader(embedStageBasic))
+	Images.Stages.Basic.Day, _, err = ebitenutil.NewImageFromReader(bytes.NewReader(embedStageBasic))
+	if err != nil {
+		log.Fatal(err)
+	}
+	Images.Stages.Basic.Night, _, err = ebitenutil.NewImageFromReader(bytes.NewReader(embedStageBasicNight))
+	if err != nil {
+		log.Fatal(err)
+	}
+	Images.Stages.Basic.Highlight, _, err = ebitenutil.NewImageFromReader(bytes.NewReader(embedStageBasicHighlight))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -107,6 +126,10 @@ func Init() {
 		log.Fatal(err)
 	}
 	Images.Items.Leaf, _, err = ebitenutil.NewImageFromReader(bytes.NewReader(embedItemsLeaf))
+	if err != nil {
+		log.Fatal(err)
+	}
+	Images.Items.Trowel, _, err = ebitenutil.NewImageFromReader(bytes.NewReader(embedItemsTrowel))
 	if err != nil {
 		log.Fatal(err)
 	}

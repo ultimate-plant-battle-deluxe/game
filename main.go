@@ -21,6 +21,7 @@ import (
 
 type Sprite struct {
 	Image *ebiten.Image
+	ImageScale float64
 	X       float64
 	Y       float64
 	ShadowY float64
@@ -70,11 +71,15 @@ func AddItem(kind ItemKind) {
 	if kind == ItemSeedsBasic {
 		img = resources.Images.Items.Seeds.Basic
 	}
+	if kind == ItemTrowel {
+		img = resources.Images.Items.Trowel
+	}
 	Items = append(Items, &Item{
 		Slot: len(Items) + 1,
 		Kind: kind,
 		Sprite: &Sprite{
 			Image: img,
+			ImageScale: 0.5,
 		},
 		MouseOver: false,
 	})
@@ -92,21 +97,42 @@ func (g *Garden) AddPlant(kind PlantKind) {
 		Kind: kind,
 		Sprite: &Sprite{
 			Image: img,
+			ImageScale: 0.5,
 		},
 		MouseOver: false,
 	})
 }
 
 func (s *Sprite) In(x, y int) bool {
-	width := s.Image.Bounds().Max.X
-	height := s.Image.Bounds().Max.Y
+	scale := s.ImageScale
+	if scale == 0 {
+		scale = 1
+	}
+	width := int(float64(s.Image.Bounds().Max.X) * scale)
+	height := int(float64(s.Image.Bounds().Max.Y) * scale)
 	return x >= int(s.X) && x <= int(s.X) + width && y >= int(s.Y) && y <= int(s.Y) + height
+}
+
+func (s *Sprite) Draw() *ebiten.Image {
+	w, h := s.Image.Bounds().Max.X, s.Image.Bounds().Max.Y
+	scale := s.ImageScale
+	if scale == 0 {
+		scale = 1
+	}
+	w = int(float64(w) * scale)
+	h = int(float64(h) * scale)
+	img := ebiten.NewImage(w, h)
+	geom := ebiten.GeoM{}
+	geom.Scale(scale, scale)
+	img.DrawImage(s.Image, &ebiten.DrawImageOptions{GeoM: geom})
+	return img;
 }
 
 type GameState struct {
 	Id uuid.UUID `json:"id"`
 	Time int `json:"time"`
 	Items []ItemKind `json:"items"`
+	Gardens []Garden `json:"gardens"`
 }
 
 var gameState *GameState = &GameState{}
@@ -114,14 +140,17 @@ var gameToken string
 
 func ApplyGameState() {
 	for _, item := range gameState.Items {
-		if item == ItemWater {
-			AddItem(ItemWater)
-		}
-		if item == ItemLeaf {
-			AddItem(ItemLeaf)
-		}
-		if item == ItemSeedsBasic {
-			AddItem(ItemSeedsBasic)
+		AddItem(ItemKind(item))
+	}
+
+	Gardens = []*Garden{}
+	for idx, garden := range gameState.Gardens {
+		Gardens = append(Gardens, &Garden{
+			Plants: []*Plant{},
+		})
+
+		for _, plant := range garden.Plants {
+			Gardens[idx].AddPlant(plant.Kind)
 		}
 	}
 }
@@ -133,7 +162,6 @@ func init() {
 	LoadClouds()
 
 	Items = []*Item{}
-	Gardens = []*Garden{{}}
 
 	Api("start")
 }
@@ -144,6 +172,8 @@ var draggingItem *Item
 var hoveringItem *Item
 var dragOffsetX float64
 var dragOffsetY float64
+
+var highlightStage bool
 
 func (g *Game) Update() error {
 	cursorX, cursorY := ebiten.CursorPosition()
@@ -183,14 +213,23 @@ func (g *Game) Update() error {
 			if mouseOver && item.MouseDown {
 				item.OnMouseUp()
 				draggingItem = nil
+				if highlightStage {
+					Api("garden")
+				}
 				break
 			}
-		} 
+		}
 	}
-
+	
 	if draggingItem != nil && draggingItem.MouseDown {
 		draggingItem.X = float64(cursorX) - dragOffsetX
 		draggingItem.Y = float64(cursorY) - dragOffsetY
+		
+	}
+	if draggingItem != nil && draggingItem.Kind == ItemTrowel && cursorY >= 680  {
+		highlightStage = true
+	} else {
+		highlightStage = false
 	}
 	return nil
 }
@@ -202,12 +241,20 @@ func RandomInt(min int, max int) int {
 func (g *Game) Draw(screen *ebiten.Image) {
 
 	// Stage
-	screen.DrawImage(resources.Images.Stages.Basic, nil)
-
+	screen.DrawImage(resources.Images.Stages.Basic.Night, nil)
+	
+	sceneColor := ebiten.ColorM{}
+	sceneColor.Translate(0, 0, 0, (float64(gameState.Time) / 10)-1)
+	screen.DrawImage(resources.Images.Stages.Basic.Day, &ebiten.DrawImageOptions{ColorM: sceneColor})
+	
+	if highlightStage {
+		screen.DrawImage(resources.Images.Stages.Basic.Highlight, nil)
+	}
+	
 	// Gardens
 	for idx, garden := range Gardens {
 		geom := ebiten.GeoM{}
-		geom.Translate(float64((idx + 1) * 200), 800)
+		geom.Translate(float64((idx + 1) * 400), 800)
 		screen.DrawImage(resources.Images.Patches.Dirt, &ebiten.DrawImageOptions{GeoM: geom})
 		for _, plant := range garden.Plants {
 			plant.Draw(screen)
