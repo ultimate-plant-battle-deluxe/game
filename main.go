@@ -31,7 +31,38 @@ type Sprite struct {
 }
 
 type Garden struct {
+	Slot int
+	Water int
 	Plants []*Plant
+	Highlighted bool
+}
+
+func (g *Garden) X() int {
+	return (g.Slot + 1) * 400
+}
+
+func (g *Garden) Y() int {
+	return 800
+}
+
+func (g *Garden) Draw(screen *ebiten.Image) {
+	geom := ebiten.GeoM{}
+	geom.Translate(float64(g.X()), float64(g.Y()))
+	colorm := ebiten.ColorM{}
+	if g.Highlighted {
+		colorm.ChangeHSV(0, 100, 100)
+	}
+	screen.DrawImage(resources.Images.Patches.Dirt, &ebiten.DrawImageOptions{GeoM: geom, ColorM: colorm})
+	for _, plant := range g.Plants {
+		plant.Draw(screen)
+	}
+
+	// TODO: Enable icon in draw text?
+	waterGeom := ebiten.GeoM{}
+	waterGeom.Scale(0.25, 0.25)
+	waterGeom.Translate(float64(g.X() + 170), float64(g.Y() + 165))
+	screen.DrawImage(resources.Images.Items.Water, &ebiten.DrawImageOptions{GeoM: waterGeom})
+	DrawText(screen, fmt.Sprint(g.Water), g.X() + 100, g.Y() + 250)
 }
 
 var Items []*Item
@@ -146,7 +177,9 @@ func ApplyGameState() {
 	Gardens = []*Garden{}
 	for idx, garden := range gameState.Gardens {
 		Gardens = append(Gardens, &Garden{
+			Slot: idx,
 			Plants: []*Plant{},
+			Water: garden.Water,
 		})
 
 		for _, plant := range garden.Plants {
@@ -170,6 +203,7 @@ type Game struct{}
 
 var draggingItem *Item
 var hoveringItem *Item
+var hoveringGarden *Garden
 var dragOffsetX float64
 var dragOffsetY float64
 
@@ -208,16 +242,25 @@ func (g *Game) Update() error {
 		}
 	}
 	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
-		for _, item := range Items {
-			mouseOver := item.In(cursorX, cursorY)
-			if mouseOver && item.MouseDown {
-				item.OnMouseUp()
-				draggingItem = nil
-				if highlightStage {
-					Api("garden")
+		if hoveringGarden != nil {
+			if draggingItem != nil {
+				switch draggingItem.Kind {
+				case ItemWater:
+					Api(fmt.Sprintf("water?gardenId=%v", hoveringGarden.Slot))
+					break
+				case ItemSeedsBasic:
+					Api(fmt.Sprintf("plant?gardenId=%v", hoveringGarden.Slot))
 				}
-				break
 			}
+			hoveringGarden.Highlighted = false
+			hoveringGarden = nil
+		}
+		if highlightStage {
+			Api("garden")
+		}
+		if draggingItem != nil {
+			draggingItem.OnMouseUp()
+			draggingItem = nil
 		}
 	}
 	
@@ -230,6 +273,19 @@ func (g *Game) Update() error {
 		highlightStage = true
 	} else {
 		highlightStage = false
+	}
+
+	if draggingItem != nil {
+		for _, garden := range Gardens {
+			if cursorX >= garden.X() && cursorX <= garden.X() + resources.Images.Patches.Dirt.Bounds().Max.X &&
+				cursorY >= garden.Y() && cursorY <= garden.Y() + resources.Images.Patches.Dirt.Bounds().Max.Y {
+				garden.Highlighted = true
+				hoveringGarden = garden
+			} else if garden.Highlighted {
+				garden.Highlighted = false
+				hoveringGarden = nil
+			}
+		}
 	}
 	return nil
 }
@@ -252,13 +308,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	
 	// Gardens
-	for idx, garden := range Gardens {
-		geom := ebiten.GeoM{}
-		geom.Translate(float64((idx + 1) * 400), 800)
-		screen.DrawImage(resources.Images.Patches.Dirt, &ebiten.DrawImageOptions{GeoM: geom})
-		for _, plant := range garden.Plants {
-			plant.Draw(screen)
-		}
+	for _, garden := range Gardens {
+		garden.Draw(screen)
 	}
 
 	DrawClouds(screen)

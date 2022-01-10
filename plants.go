@@ -18,6 +18,7 @@ const (
 
 func (p *Plant) Draw(screen *ebiten.Image) {
 	geom := ebiten.GeoM{}
-	geom.Translate(p.X + (float64(p.Slot) * 50), p.Y)
+	geom.Scale(p.ImageScale, p.ImageScale)
+	geom.Translate(float64(p.Garden.X()) + (float64(p.Slot) * 70), float64(p.Garden.Y() - 70))
 	screen.DrawImage(p.Image, &ebiten.DrawImageOptions{GeoM: geom})
 }
